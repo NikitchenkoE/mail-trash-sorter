@@ -28,7 +28,7 @@ mail-trash-sorter/
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/NikitchenkoE/mail-trash-sorter.git
    cd mail-trash-sorter
    ```
 
