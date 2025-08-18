@@ -14,10 +14,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class EmailConfig(BaseSettings):
     """Email server configuration settings."""
     
-    imap_host: str = Field(..., env="IMAP_HOST")
+    imap_host: str = Field("localhost", env="IMAP_HOST")
     imap_port: int = Field(993, env="IMAP_PORT")
-    imap_user: str = Field(..., env="IMAP_USER")
-    imap_password: str = Field(..., env="IMAP_PASSWORD")
+    imap_user: str = Field("user@example.com", env="IMAP_USER")
+    imap_password: str = Field("password", env="IMAP_PASSWORD")
     imap_use_ssl: bool = Field(True, env="IMAP_USE_SSL")
     imap_folder: str = Field("INBOX", env="IMAP_FOLDER")
     imap_batch_size: int = Field(50, env="IMAP_BATCH_SIZE", ge=1, le=1000)
@@ -37,16 +37,27 @@ class EmailConfig(BaseSettings):
         if not v.strip():
             raise ValueError("IMAP user cannot be empty")
         return v.strip()
-
+    
+    @field_validator("imap_password")
+    @classmethod
+    def validate_imap_password(cls, v: str) -> str:
+        """Validate IMAP password is not empty."""
+        if not v.strip():
+            raise ValueError("IMAP password cannot be empty")
+        return v.strip()
 
 class DatabaseConfig(BaseSettings):
-    """Database configuration settings."""
+    """Database configuration settings.
+    
+    Supports multiple database backends with type-specific configuration.
+    Compatible with the repository factory pattern for dependency injection.
+    """
     
     database_type: Literal["sqlite", "dynamodb"] = Field("sqlite", env="DATABASE_TYPE")
     
     # SQLite settings
     sqlite_db_path: Path = Field(
-        Path("./mailbot/data/emails.db"), 
+        Path("./mailbot/data/checkpoints.db"), 
         env="SQLITE_DB_PATH"
     )
     
@@ -54,7 +65,25 @@ class DatabaseConfig(BaseSettings):
     aws_region: str = Field("us-east-1", env="AWS_REGION")
     aws_access_key_id: str | None = Field(None, env="AWS_ACCESS_KEY_ID")
     aws_secret_access_key: str | None = Field(None, env="AWS_SECRET_ACCESS_KEY")
-    dynamodb_table_name: str = Field("mail_sorter_emails", env="DYNAMODB_TABLE_NAME")
+    dynamodb_table_name: str = Field("mail_checkpoints", env="DYNAMODB_TABLE_NAME")
+
+    @property
+    def database_path(self) -> Path:
+        """Get the appropriate database path based on database type.
+        
+        Returns:
+            Path to database file for SQLite, placeholder for DynamoDB
+            
+        Raises:
+            ValueError: If database type is unsupported
+        """
+        if self.database_type == "sqlite":
+            return self.sqlite_db_path
+        elif self.database_type == "dynamodb":
+            # For DynamoDB, return a placeholder path (not used)
+            return Path("dynamodb://placeholder")
+        else:
+            raise ValueError(f"Unsupported database type: {self.database_type}")
 
     @field_validator("sqlite_db_path")
     @classmethod
@@ -92,7 +121,7 @@ class AppConfig(BaseSettings):
         v.parent.mkdir(parents=True, exist_ok=True)
         return v
 
-
+# TODO: update while training model
 class MLConfig(BaseSettings):
     """Machine learning model configuration settings."""
     
@@ -117,7 +146,7 @@ class MLConfig(BaseSettings):
         v.parent.mkdir(parents=True, exist_ok=True)
         return v
 
-
+# TODO: update while configuration app logic
 class ProcessingConfig(BaseSettings):
     """Email processing configuration settings."""
     
