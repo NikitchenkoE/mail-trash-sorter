@@ -14,10 +14,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class EmailConfig(BaseSettings):
     """Email server configuration settings."""
     
-    imap_host: str = Field("localhost", env="IMAP_HOST")
+    imap_host: str = Field(..., env="IMAP_HOST")
     imap_port: int = Field(993, env="IMAP_PORT")
-    imap_user: str = Field("user@example.com", env="IMAP_USER")
-    imap_password: str = Field("password", env="IMAP_PASSWORD")
+    imap_user: str = Field(..., env="IMAP_USER")
+    imap_password: str = Field(..., env="IMAP_PASSWORD")
     imap_use_ssl: bool = Field(True, env="IMAP_USE_SSL")
     imap_folder: str = Field("INBOX", env="IMAP_FOLDER")
     imap_batch_size: int = Field(50, env="IMAP_BATCH_SIZE", ge=1, le=1000)
