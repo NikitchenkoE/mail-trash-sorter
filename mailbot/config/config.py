@@ -4,11 +4,35 @@ This module provides Pydantic-based configuration loading from environment
 variables and .env files with proper validation and type conversion.
 """
 
+import os
 from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_settings_config() -> SettingsConfigDict:
+    """Get standard settings configuration.
+    
+    Returns:
+        SettingsConfigDict: Configuration using .env file
+        
+    Raises:
+        FileNotFoundError: If .env file is not found
+    """
+    if not os.path.exists(".env"):
+        raise FileNotFoundError(
+            ".env file not found. Please create a .env file with required configuration."
+        )
+    
+    return SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+        env_ignore_empty=True,
+    )
 
 
 class EmailConfig(BaseSettings):
@@ -19,8 +43,12 @@ class EmailConfig(BaseSettings):
     imap_user: str = Field(..., env="IMAP_USER")
     imap_password: str = Field(..., env="IMAP_PASSWORD")
     imap_use_ssl: bool = Field(True, env="IMAP_USE_SSL")
+    imap_verify_ssl: bool = Field(True, env="IMAP_VERIFY_SSL")
+    imap_ssl_check_hostname: bool = Field(True, env="IMAP_SSL_CHECK_HOSTNAME")
     imap_folder: str = Field("INBOX", env="IMAP_FOLDER")
     imap_batch_size: int = Field(50, env="IMAP_BATCH_SIZE", ge=1, le=1000)
+    
+    model_config = get_settings_config()
 
     @field_validator("imap_host")
     @classmethod
@@ -66,6 +94,8 @@ class DatabaseConfig(BaseSettings):
     aws_access_key_id: str | None = Field(None, env="AWS_ACCESS_KEY_ID")
     aws_secret_access_key: str | None = Field(None, env="AWS_SECRET_ACCESS_KEY")
     dynamodb_table_name: str = Field("mail_checkpoints", env="DYNAMODB_TABLE_NAME")
+    
+    model_config = get_settings_config()
 
     @property
     def database_path(self) -> Path:
@@ -101,6 +131,8 @@ class AppConfig(BaseSettings):
     log_level: str = Field("INFO", env="LOG_LEVEL")
     log_file: Path = Field(Path("./logs/mailbot.log"), env="LOG_FILE")
     debug: bool = Field(False, env="DEBUG")
+    
+    model_config = get_settings_config()
 
     @field_validator("log_level")
     @classmethod
@@ -136,6 +168,8 @@ class MLConfig(BaseSettings):
         ge=0.0, 
         le=1.0
     )
+    
+    model_config = get_settings_config()
 
     @field_validator("model_path")
     @classmethod
@@ -154,23 +188,20 @@ class ProcessingConfig(BaseSettings):
     spam_folder: str = Field("Spam", env="SPAM_FOLDER")
     important_folder: str = Field("Important", env="IMPORTANT_FOLDER")
     processed_folder: str = Field("Processed", env="PROCESSED_FOLDER")
+    
+    model_config = get_settings_config()
 
 
 class Settings(BaseSettings):
     """Main application settings combining all configuration sections."""
     
-    email: EmailConfig = EmailConfig()
-    database: DatabaseConfig = DatabaseConfig()
-    app: AppConfig = AppConfig()
-    ml: MLConfig = MLConfig()
-    processing: ProcessingConfig = ProcessingConfig()
+    email: EmailConfig = Field(default_factory=EmailConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    app: AppConfig = Field(default_factory=AppConfig)
+    ml: MLConfig = Field(default_factory=MLConfig)
+    processing: ProcessingConfig = Field(default_factory=ProcessingConfig)
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
-    )
+    model_config = get_settings_config()
 
 
 # Global settings instance
